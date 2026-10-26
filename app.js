@@ -12,10 +12,11 @@ app.use(express.json());
 
 // Routes
 const categorieRouter = require('./routes/categorie.route');
+const scategorieRouter = require('./routes/scategorie.route');
 const articleRouter = require('./routes/article.route');
-// ajoutez ici vos autres routeurs (scategories, users, etc.)
 
 app.use('/api/categories', categorieRouter);
+app.use('/api/scategories', scategorieRouter);
 app.use('/api/articles', articleRouter);
 
 // Connexion à la base de données
