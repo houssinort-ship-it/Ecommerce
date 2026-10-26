@@ -12,7 +12,7 @@ dotenv.config()
 app.use(cors())
 //BodyParser Middleware
 // Connexion à la base données
-mongoose.connect(process.env.DATABASE)
+mongoose.connect(process.env.DATABASE_CLOUD)
 .then(() => {console.log("DataBase Successfully Connected");})
 .catch(err => { console.log("Unable to connect to database", err);
 process.exit(); });
