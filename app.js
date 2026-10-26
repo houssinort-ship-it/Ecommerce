@@ -10,6 +10,40 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Connexion MongoDB mise en cache (adaptée à Vercel)
+let cached = global.mongooseConn;
+if (!cached) cached = global.mongooseConn = { conn: null, promise: null };
+
+async function connectDB() {
+  if (cached.conn) return cached.conn;
+  if (!cached.promise) {
+    cached.promise = mongoose.connect(process.env.DATABASE_CLOUD, {
+      serverSelectionTimeoutMS: 8000,
+    });
+  }
+  try {
+    cached.conn = await cached.promise;
+  } catch (err) {
+    cached.promise = null;
+    throw err;
+  }
+  return cached.conn;
+}
+
+// Attendre la connexion avant chaque requête
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error('Unable to connect to database', err);
+    res.status(500).json({
+      message: 'Database connection failed',
+      error: err.message,
+    });
+  }
+});
+
 // Routes
 const categorieRouter = require('./routes/categorie.route');
 const scategorieRouter = require('./routes/scategorie.route');
@@ -18,12 +52,6 @@ const articleRouter = require('./routes/article.route');
 app.use('/api/categories', categorieRouter);
 app.use('/api/scategories', scategorieRouter);
 app.use('/api/articles', articleRouter);
-
-// Connexion à la base de données
-mongoose
-  .connect(process.env.DATABASE_CLOUD)
-  .then(() => console.log('DataBase Successfully Connected'))
-  .catch((err) => console.log('Unable to connect to database', err));
 
 // Route de test
 app.get('/', (req, res) => {
