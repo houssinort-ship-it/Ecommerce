@@ -13,6 +13,7 @@ Petit catalogue e-commerce en **MongoDB / Express / React / Node** : gestion des
 │   ├── middleware/     # Vérification du token JWT
 │   ├── models/         # Schémas Mongoose (article, categorie, scategorie, user)
 │   ├── routes/         # /api/articles, /api/categories, /api/scategories, /api/auth
+│   ├── mcp-server/     # Serveur MCP (tools + client de test) exposé sur /mcp
 │   ├── seed.js         # Jeu de données de démonstration
 │   └── vercel.json     # Déploiement serverless
 └── Frontend/           # Application React (Vite + Bootstrap)
@@ -28,6 +29,7 @@ Petit catalogue e-commerce en **MongoDB / Express / React / Node** : gestion des
 - Ajout / modification / suppression d'articles (authentifié)
 - Catégories et sous-catégories (CRUD, écriture authentifiée)
 - Inscription / connexion avec mots de passe hashés (bcrypt) et JWT (7 jours)
+- **Serveur MCP** exposant 25 tools (articles, catégories, recherche, stock, panier) pour ChatGPT / Claude / Cursor
 
 ## Démarrage
 
@@ -76,6 +78,34 @@ npm run dev               # http://localhost:5173
 | POST    | `/api/auth/login`      | public (rate limité) |
 
 Les routes protégées attendent l'en-tête `Authorization: Bearer <token>`.
+
+## Serveur MCP (ChatGPT, Claude, Cursor)
+
+Le backend expose aussi un serveur MCP sur `POST /mcp` (Streamable HTTP).
+
+```bash
+cd Backend
+npm start                        # http://localhost:4000
+node mcp-server/test-client.js   # liste les tools disponibles
+npm test                         # tests de fumée REST + MCP
+```
+
+**ChatGPT ne peut pas joindre `localhost`.** Le connecteur s'exécute dans le cloud
+d'OpenAI : il faut une URL **https publique**. En local, utilisez un tunnel :
+
+```bash
+ngrok http 4000                  # -> https://xxxx.ngrok-free.dev/mcp
+# ou : cloudflared tunnel --url http://localhost:4000
+```
+
+Puis dans ChatGPT : Paramètres → Connecteurs → Avancé → Mode développeur →
+Ajouter un serveur, avec l'URL `https://VOTRE-URL/mcp`.
+
+Pour un déploiement permanent, utilisez `https://votre-app.vercel.app/mcp` et
+définissez `API_URL=https://votre-app.vercel.app/api`. Si l'endpoint est public,
+protégez-le avec `MCP_ACCESS_TOKEN` et l'URL `https://.../mcp?token=...`.
+
+Guide complet et dépannage « fetch failed » : [`Backend/mcp-server/README.md`](./Backend/mcp-server/README.md).
 
 ## Déploiement
 

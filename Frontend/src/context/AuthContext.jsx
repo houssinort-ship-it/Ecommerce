@@ -27,6 +27,9 @@ export function AuthProvider({ children }) {
   );
 }
 
+// Le hook useAuth est exporté dans le même fichier que le Provider : c'est un
+// pattern classique, mais il empêche le Fast Refresh de ce module.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   return useContext(AuthContext);
 }

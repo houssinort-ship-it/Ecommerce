@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
+const crypto = require('crypto');
 const cors = require('cors');
 const helmet = require('helmet');
 
@@ -23,10 +24,18 @@ const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173')
 app.use(
   cors({
     origin: (origin, callback) => {
+      // Une origine refusée renvoie `false` (pas d'en-têtes CORS) et NON une
+      // erreur : lever une exception ici produisait un HTTP 500 sur le
+      // preflight OPTIONS envoyé par les clients distants (ChatGPT, etc.).
       if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-      return callback(new Error('Origine non autorisée par CORS'));
+      return callback(null, false);
     },
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    // Le client MCP envoie ses propres en-têtes et lit mcp-session-id dans la réponse
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-mcp-key', 'x-mcp-token', 'mcp-protocol-version', 'mcp-session-id', 'last-event-id'],
+    exposedHeaders: ['mcp-session-id'],
+    maxAge: 86400,
+    optionsSuccessStatus: 204,
   })
 );
 
@@ -77,6 +86,107 @@ app.use('/api/categories', categorieRouter);
 app.use('/api/scategories', scategorieRouter);
 app.use('/api/articles', articleRouter);
 app.use('/api/auth', authRouter);
+// ============================================================
+// Serveur MCP : expose les services web sous forme de "tools"
+// adresse : http://localhost:PORT/mcp
+// ============================================================
+const { McpServer } = require("@modelcontextprotocol/sdk/server/mcp.js");
+const { StreamableHTTPServerTransport } = require("@modelcontextprotocol/sdk/server/streamableHttp.js");
+// Import des fichiers qui contiennent les tools
+const categorieTools = require("./mcp-server/tools/categorie.tools");
+const scategorieTools = require("./mcp-server/tools/scategorie.tools");
+const articleTools = require("./mcp-server/tools/article.tools");
+const catalogueTools = require("./mcp-server/tools/catalogue.tools");
+// Création du serveur MCP et ajout de toutes les tools
+function createMcpServer() {
+  const server = new McpServer({ name: "ecommerce-mcp-server", version: "1.0.0" });
+  categorieTools(server); // tools des catégories
+  scategorieTools(server); // tools des sous-catégories
+  articleTools(server); // tools des articles
+  catalogueTools(server); // tools supplémentaires (recherche, stock, panier...)
+  return server;
+}
+// ------------------------------------------------------------
+// Protection optionnelle de /mcp
+// ------------------------------------------------------------
+// ChatGPT, Claude et les autres connecteurs distants doivent pouvoir
+// atteindre /mcp depuis Internet. Si MCP_ACCESS_TOKEN est défini, l'appel
+// doit fournir le jeton : Authorization: Bearer <token>, en-tête
+// x-mcp-token, ou paramètre d'URL ?token=<token> (utile pour les
+// connecteurs dont l'UI n'accepte qu'une URL).
+function safeEqual(a, b) {
+  const bufA = Buffer.from(String(a));
+  const bufB = Buffer.from(String(b));
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
+function isMcpAuthorized(req) {
+  const expected = process.env.MCP_ACCESS_TOKEN;
+  if (!expected) return true; // protection désactivée
+
+  const auth = req.headers.authorization || "";
+  const bearer = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+  const candidates = [bearer, req.headers["x-mcp-token"], req.query?.token];
+  return candidates.some((value) => value && safeEqual(value, expected));
+}
+
+// Toutes les requêtes MCP arrivent sur POST /mcp
+app.post("/mcp", async (req, res) => {
+  if (!isMcpAuthorized(req)) {
+    return res.status(401).json({
+      jsonrpc: "2.0",
+      error: { code: -32001, message: "Jeton MCP manquant ou invalide" },
+      id: null,
+    });
+  }
+
+  // Un nouveau serveur pour chaque requête (mode simple, sans session)
+  const server = createMcpServer();
+  const transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: undefined, // mode sans état (adapté au serverless)
+    // Réponses JSON plutôt que flux SSE : indispensable derrière Vercel et
+    // beaucoup plus fiable pour les connecteurs distants (ChatGPT).
+    enableJsonResponse: true,
+  });
+  // Quand la réponse est envoyée, on ferme le serveur et le transport
+  res.on("close", () => {
+    transport.close();
+    server.close();
+  });
+  try {
+    await server.connect(transport);
+    await transport.handleRequest(req, res, req.body);
+  } catch (error) {
+    console.error("Erreur MCP:", error.message);
+    if (!res.headersSent) {
+      res.status(500).json({
+        jsonrpc: "2.0",
+        error: { code: -32603, message: "Erreur interne du serveur MCP" },
+        id: null,
+      });
+    }
+  }
+});
+
+// Sonde de disponibilité : permet de vérifier qu'un tunnel (ngrok,
+// cloudflared, Vercel) atteint bien le serveur MCP depuis Internet.
+app.get("/mcp/health", (req, res) => {
+  res.json({ status: "ok", service: "ecommerce-mcp-server" });
+});
+
+// Ce serveur n'expose pas de flux SSE (GET) ni de sessions (DELETE) :
+// la spécification MCP demande alors une réponse 405 explicite.
+const methodNotAllowed = (req, res) => {
+  res.set("Allow", "POST, OPTIONS");
+  res.status(405).json({
+    jsonrpc: "2.0",
+    error: { code: -32000, message: "Method Not Allowed : utilisez POST /mcp" },
+    id: null,
+  });
+};
+app.get("/mcp", methodNotAllowed);
+app.delete("/mcp", methodNotAllowed);
 
 // Route de test
 app.get('/', (req, res) => {

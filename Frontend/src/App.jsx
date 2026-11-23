@@ -2,6 +2,7 @@ import { Navigate, Routes, Route } from 'react-router';
 import ListArticles from './components/ListArticles';
 import AddArticle from './components/AddArticle';
 import EditArticle from './components/EditArticle';
+import ListeMarques from './components/ListeMarques';
 import Login from './components/Login';
 import Signup from './components/Signup';
 import Menu from './Menu';
@@ -21,6 +22,7 @@ function App() {
       <Routes>
         <Route path="/" element={<ListArticles />} />
         <Route path="/articles" element={<ListArticles />} />
+        <Route path="/marques" element={<ListeMarques />} />
         <Route
           path="/addArticle"
           element={

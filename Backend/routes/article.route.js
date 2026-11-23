@@ -15,6 +15,26 @@ router.post('/', requireAuth, async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 });
+// liste des marques sans doublons
+// (doit être placée AVANT la route '/:articleId', sinon "marques" serait pris pour un id)
+router.get('/marques', async (req, res) => {
+  try {
+      const marques = await Article.distinct("marque");
+      res.status(200).json(marques.sort());
+} catch (error) {
+      res.status(404).json({ message: error.message });
+}
+});
+// chercher un article par sa référence
+router.get('/ref/:reference', async (req, res) => {
+  try {
+      const art = await Article.findOne({ reference: req.params.reference }).populate("scategorieID").exec();
+  if (!art) return res.status(404).json({ message: "Aucun article avec cette référence" });
+      res.status(200).json(art);
+} catch (error) {
+      res.status(404).json({ message: error.message });
+}
+});
 
 // Liste des articles (les plus récents d'abord)
 router.get('/', async (req, res) => {

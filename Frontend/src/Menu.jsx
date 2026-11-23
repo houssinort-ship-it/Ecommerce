@@ -34,6 +34,9 @@ function Menu() {
               <NavLink className="nav-link" to="/articles">Liste des articles</NavLink>
             </li>
             <li className="nav-item">
+              <NavLink className="nav-link" to="/marques">Marques</NavLink>
+            </li>
+            <li className="nav-item">
               <NavLink className="nav-link" to="/addArticle">Ajout articles</NavLink>
             </li>
           </ul>

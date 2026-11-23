@@ -29,6 +29,22 @@ router.post('/', requireAuth, async (req, res) => {
   }
 });
 
+// Sous-catégories d'une catégorie donnée
+// (doit être placée AVANT la route '/:scategorieId', sinon "cat" serait pris pour un id)
+router.get('/cat/:categorieID', async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.categorieID)) {
+    return res.status(400).json({ message: 'Identifiant invalide' });
+  }
+  try {
+    const scat = await Scategorie.find({ categorieID: req.params.categorieID }, null, {
+      sort: { _id: -1 },
+    }).populate('categorieID');
+    res.status(200).json(scat);
+  } catch (error) {
+    res.status(500).json({ message: 'Impossible de charger les sous-catégories' });
+  }
+});
+
 // Chercher une sous-catégorie par id
 router.get('/:scategorieId', async (req, res) => {
   if (!mongoose.isValidObjectId(req.params.scategorieId)) {
