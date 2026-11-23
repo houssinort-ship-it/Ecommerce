@@ -107,10 +107,70 @@ protégez-le avec `MCP_ACCESS_TOKEN` et l'URL `https://.../mcp?token=...`.
 
 Guide complet et dépannage « fetch failed » : [`Backend/mcp-server/README.md`](./Backend/mcp-server/README.md).
 
-## Déploiement
+## Déploiement Vercel
 
-- **Backend** : prévu pour Vercel (`Backend/vercel.json`). Définissez `DATABASE_CLOUD`, `JWT_SECRET` et `CORS_ORIGINS` dans les variables d'environnement du projet Vercel.
-- **Frontend** : `npm run build` puis hébergement statique (Vercel, Netlify…). Renseignez `VITE_API_URL` avec l'URL publique de l'API.
+Ce dépôt contient **deux projets Vercel distincts** (monorepo). Pour chacun :
+**Settings → General → Root Directory**.
+
+### 1. Projet « backend »
+
+| Réglage | Valeur |
+| ------- | ------ |
+| Root Directory | `Backend` |
+| Framework Preset | Other |
+| Build Command | (laisser vide) |
+
+Variables d'environnement à définir :
+
+| Variable | Valeur |
+| -------- | ------ |
+| `DATABASE_CLOUD` | chaîne MongoDB Atlas |
+| `JWT_SECRET` | chaîne aléatoire longue |
+| `CORS_ORIGINS` | URL du front, ex. `https://ecommerce-front.vercel.app` |
+| `API_URL` | URL publique du backend + `/api` (recommandé) |
+| `MCP_API_KEY` | chaîne aléatoire (tools d'écriture) |
+| `MCP_ACCESS_TOKEN` | chaîne aléatoire (protège `/mcp`) |
+
+> `MCP_API_KEY` et `MCP_ACCESS_TOKEN` doivent être **différents**.
+
+### 2. Projet « frontend »
+
+| Réglage | Valeur |
+| ------- | ------ |
+| Root Directory | `Frontend` |
+| Framework Preset | Vite |
+| Build Command | `npm run build` |
+| Output Directory | `dist` |
+
+Variable d'environnement :
+
+| Variable | Valeur |
+| -------- | ------ |
+| `VITE_API_URL` | `https://<backend>.vercel.app/api` |
+| `VITE_MCP_URL` | `https://<backend>.vercel.app/mcp` (optionnel) |
+
+Si `VITE_API_URL` est absente, le front appelle `/api` sur son propre domaine
+(utile seulement si un rewrite proxy est configuré).
+
+### 3. Désactiver la protection d'accès (obligatoire)
+
+Par défaut, Vercel peut activer **Deployment Protection → Vercel Authentication**.
+Toutes les URL (y compris `/api` et `/mcp`) renvoient alors une redirection 302 vers
+la page de connexion Vercel : le site public et le connecteur ChatGPT échouent.
+
+**Project → Settings → Deployment Protection → Vercel Authentication → Disabled**
+(ou « Only Preview Deployments » pour garder les previews privées).
+
+### Vérifier après déploiement
+
+```bash
+curl https://<backend>.vercel.app/            # {"status":"ok",...}
+curl https://<backend>.vercel.app/mcp/health   # {"status":"ok",...}
+curl -X POST https://<backend>.vercel.app/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"t","version":"1"}}}'
+```
 
 ## Licence
 

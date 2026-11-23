@@ -1,12 +1,5 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "builds": [{ "src": "app.js", "use": "@vercel/node" }],
-  "routes": [{ "src": "/(.*)", "dest": "/app.js" }],
-  "functions": {
-    "app.js": {
-      "maxDuration": 30,
-      "memory": 1024
-    }
-  }
+  "routes": [{ "src": "/(.*)", "dest": "/app.js" }]
 }

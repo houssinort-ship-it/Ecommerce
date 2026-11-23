@@ -1,0 +1,6 @@
+# Ne jamais envoyer les secrets ni les dépendances sur Vercel
+.env
+.env.*
+!.env.example
+node_modules
+*.log
