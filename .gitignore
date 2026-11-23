@@ -36,3 +36,6 @@ Thumbs.db
 coverage/
 *.local
 .vercel
+
+# Export local de la base (contient des données réelles)
+db-export.json

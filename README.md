@@ -112,6 +112,20 @@ Guide complet et dépannage « fetch failed » : [`Backend/mcp-server/README.md`
 Ce dépôt contient **deux projets Vercel distincts** (monorepo). Pour chacun :
 **Settings → General → Root Directory**.
 
+### 0. Base de données obligatoire
+
+Vercel **ne peut pas** joindre un MongoDB local (`localhost:27017`). Il faut une base
+cloud (MongoDB Atlas gratuit). Pour migrer vos données locales :
+
+```bash
+cd Backend
+npm run db:export                              # crée db-export.json (gitignoré)
+npm run db:import -- "mongodb+srv://user:pass@cluster.mongodb.net/DatabaseCommerce"
+```
+
+Sur Atlas : **Network Access → Add IP Address → Allow Access from Anywhere (0.0.0.0/0)**
+(les IP de sortie Vercel sont dynamiques).
+
 ### 1. Projet « backend »
 
 | Réglage | Valeur |

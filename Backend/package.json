@@ -7,7 +7,9 @@
     "start": "nodemon app.js",
     "prod": "node app.js",
     "seed": "node seed.js",
-    "test": "node mcp-server/smoke-test.js"
+    "test": "node mcp-server/smoke-test.js",
+    "db:export": "node scripts/transfer-db.js export",
+    "db:import": "node scripts/transfer-db.js import"
   },
   "keywords": [],
   "author": "",
