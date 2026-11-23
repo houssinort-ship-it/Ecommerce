@@ -1,7 +1,14 @@
 import axios from 'axios';
 
-// URL de l'API configurable via .env (VITE_API_URL)
-const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+// URL de l'API configurable via .env (VITE_API_URL).
+// - en développement : http://localhost:4000/api
+// - en production : /api (même origine) si VITE_API_URL n'est pas défini.
+//   Cela évite qu'un site déployé appelle « localhost », injoignable depuis
+//   le navigateur du visiteur. Si le front et l'API sont sur deux domaines
+//   différents, définissez VITE_API_URL dans les variables du projet Vercel.
+const baseURL =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.DEV ? 'http://localhost:4000/api' : '/api');
 
 const api = axios.create({ baseURL });
 

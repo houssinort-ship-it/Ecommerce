@@ -7,14 +7,18 @@
 
 // Adresse de base de l'API.
 // Ordre de priorité :
-//   1. API_URL déclarée dans .env
-//   2. VERCEL_URL (déploiement Vercel)
-//   3. le serveur lui-même (localhost + PORT)
+//   1. API_URL déclarée dans .env (recommandé en production)
+//   2. VERCEL_PROJECT_PRODUCTION_URL (domaine stable du projet Vercel)
+//   3. VERCEL_URL (domaine propre au déploiement)
+//   4. le serveur lui-même (localhost + PORT)
 function resolveApiUrl() {
   const declared = (process.env.API_URL || '').trim().replace(/\/+$/, '');
   if (declared) {
     // On accepte API_URL=http://host:port ET http://host:port/api
     return declared.endsWith('/api') ? declared : `${declared}/api`;
+  }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}/api`;
   }
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}/api`;
