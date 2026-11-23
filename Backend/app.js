@@ -70,9 +70,18 @@ app.use('/api', async (req, res, next) => {
     await connectDB();
     next();
   } catch (err) {
-    // Les détails restent dans les logs serveur, pas dans la réponse HTTP
+    // Les détails restent dans les logs serveur, pas dans la réponse HTTP.
+    // Le type d'erreur est exposé (aide au diagnostic sans fuite) et le
+    // message complet uniquement avec la clé de service.
     console.error('Unable to connect to database:', err.message);
-    res.status(500).json({ message: 'Database connection failed' });
+    const debug =
+      process.env.MCP_API_KEY &&
+      req.headers['x-debug-key'] === process.env.MCP_API_KEY;
+    res.status(500).json({
+      message: 'Database connection failed',
+      reason: err.name,
+      ...(debug ? { detail: err.message } : {}),
+    });
   }
 });
 
